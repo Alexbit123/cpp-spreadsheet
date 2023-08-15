@@ -4,6 +4,7 @@
 #include "common.h"
 
 #include <functional>
+#include <set>
 
 class Sheet : public SheetInterface {
 public:
@@ -21,14 +22,21 @@ public:
     void PrintValues(std::ostream& output) const override;
     void PrintTexts(std::ostream& output) const override;
 
+    std::unique_ptr<Cell> CreateCell(const std::string& str, Position pos);
+
+    const Sheet& GetSheet();
+
     const Cell* GetConcreteCell(Position pos) const;
     Cell* GetConcreteCell(Position pos);
 
 private:
     void MaybeIncreaseSizeToIncludePosition(Position pos);
     void PrintCells(std::ostream& output,
-                    const std::function<void(const CellInterface&)>& printCell) const;
+        const std::function<void(const CellInterface&)>& printCell) const;
     Size GetActualSize() const;
 
     std::vector<std::vector<std::unique_ptr<Cell>>> cells_;
+    std::set<Position> position_;
+
+    void Resize(Position pos);
 };
