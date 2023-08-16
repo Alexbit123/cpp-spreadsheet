@@ -13,34 +13,20 @@ using namespace std::literals;
 Sheet::~Sheet() {}
 
 void Sheet::SetCell(Position pos, std::string text) {
-	if (!pos.IsValid()) {
-		throw InvalidPositionException("Invalid Position in metod SetCell");
-	}
+	IsValidPos(pos);
 	Resize(pos);
 	cells_[pos.row][pos.col] = CreateCell(text, pos);
-	/*if (!cells_[pos.row][pos.col]->GetReferencedCells().empty()) {
-		for (Position pos : cells_[pos.row][pos.col]->GetReferencedCells()) {
-			if (GetCell(pos) == nullptr) {
-				SetCell(pos, "");
-			}
-		}
-	}*/
-	
 }
 
 const CellInterface* Sheet::GetCell(Position pos) const {
-	if (!pos.IsValid()) {
-		throw InvalidPositionException("Invalid Position in metod GetCell");
-	}
+	IsValidPos(pos);
 	if (static_cast<int>(cells_.size()) < pos.row + 1 || static_cast<int>(cells_[pos.row].size()) < pos.col + 1) {
 		return nullptr;
 	}
 	return cells_[pos.row][pos.col].get();
 }
 CellInterface* Sheet::GetCell(Position pos) {
-	if (!pos.IsValid()) {
-		throw InvalidPositionException("Invalid Position in metod GetCell");
-	}
+	IsValidPos(pos);
 	if (static_cast<int>(cells_.size()) < pos.row + 1 || static_cast<int>(cells_[pos.row].size()) < pos.col + 1) {
 		return nullptr;
 	}
@@ -48,9 +34,7 @@ CellInterface* Sheet::GetCell(Position pos) {
 }
 
 void Sheet::ClearCell(Position pos) {
-	if (!pos.IsValid()) {
-		throw InvalidPositionException("Invalid Position in metod ClearCell");
-	}
+	IsValidPos(pos);
 	if (cells_.empty() || static_cast<int>(cells_.size()) < pos.row) {
 		return;
 	}
@@ -66,17 +50,17 @@ Size Sheet::GetPrintableSize() const {
 		return size;
 	}
 
-	for (size_t i = 0; i < cells_.size(); ++i) {
-		if (cells_[i].empty()) {
+	for (size_t row = 0; row < cells_.size(); ++row) {
+		if (cells_[row].empty()) {
 			continue;
 		}
-		for (size_t j = 0; j < cells_[i].size(); ++j) {
-			if (cells_[i][j] != nullptr) {
-				if (size.rows < static_cast<int>(i + 1)) {
-					size.rows = i + 1;
+		for (size_t col = 0; col < cells_[row].size(); ++col) {
+			if (cells_[row][col] != nullptr) {
+				if (size.rows < static_cast<int>(row + 1)) {
+					size.rows = row + 1;
 				}
-				if (size.cols < static_cast<int>(j + 1)) {
-					size.cols = j + 1;
+				if (size.cols < static_cast<int>(col + 1)) {
+					size.cols = col + 1;
 				}
 			}
 		}
@@ -93,21 +77,21 @@ void Sheet::PrintValues(std::ostream& output) const {
 	else {
 		size_print = cells_.size();
 	}
-	for (size_t i = 0; i < size_print; ++i) {
-		for (size_t j = 0; j < cells_[i].size(); ++j) {
-			if (cells_[i][j] != nullptr) {
-				if (static_cast<int>(j + 1) == size.cols) {
-					switch (cells_[i][j]->GetValue().index()) {
-					case 0: { output << std::get<std::string>(cells_[i][j]->GetValue()); break; }
-					case 1: { output << std::get<double>(cells_[i][j]->GetValue()); break; }
-					default: { output << std::get<FormulaError>(cells_[i][j]->GetValue()); break; }
+	for (size_t row = 0; row < size_print; ++row) {
+		for (size_t col = 0; col < cells_[row].size(); ++col) {
+			if (cells_[row][col] != nullptr) {
+				if (static_cast<int>(col + 1) == size.cols) {
+					switch (cells_[row][col]->GetValue().index()) {
+					case 0: { output << std::get<std::string>(cells_[row][col]->GetValue()); break; }
+					case 1: { output << std::get<double>(cells_[row][col]->GetValue()); break; }
+					default: { output << std::get<FormulaError>(cells_[row][col]->GetValue()); break; }
 					}
 				}
 				else {
-					switch (cells_[i][j]->GetValue().index()) {
-					case 0: { output << std::get<std::string>(cells_[i][j]->GetValue()) << "\t"; break; }
-					case 1: { output << std::get<double>(cells_[i][j]->GetValue()) << "\t"; break; }
-					default: { output << std::get<FormulaError>(cells_[i][j]->GetValue()) << "\t"; break; }
+					switch (cells_[row][col]->GetValue().index()) {
+					case 0: { output << std::get<std::string>(cells_[row][col]->GetValue()) << "\t"; break; }
+					case 1: { output << std::get<double>(cells_[row][col]->GetValue()) << "\t"; break; }
+					default: { output << std::get<FormulaError>(cells_[row][col]->GetValue()) << "\t"; break; }
 					}
 				}
 			}
@@ -115,8 +99,8 @@ void Sheet::PrintValues(std::ostream& output) const {
 				output << "\t";
 			}
 		}
-		if (size.cols > static_cast<int>(cells_[i].size())) {
-			for (int col = 0; col < size.cols - static_cast<int>(cells_[i].size()) - 1; ++col) {
+		if (size.cols > static_cast<int>(cells_[row].size())) {
+			for (int col = 0; col < size.cols - static_cast<int>(cells_[row].size()) - 1; ++col) {
 				output << "\t";
 			}
 		}
@@ -132,22 +116,22 @@ void Sheet::PrintTexts(std::ostream& output) const {
 	else {
 		size_print = cells_.size();
 	}
-	for (size_t i = 0; i < size_print; ++i) {
-		for (size_t j = 0; j < cells_[i].size(); ++j) {
-			if (cells_[i][j] != nullptr) {
-				if (static_cast<int>(j + 1) == size.cols) {
-					output << cells_[i][j]->GetText();
+	for (size_t row = 0; row < size_print; ++row) {
+		for (size_t col = 0; col < cells_[row].size(); ++col) {
+			if (cells_[row][col] != nullptr) {
+				if (static_cast<int>(col + 1) == size.cols) {
+					output << cells_[row][col]->GetText();
 				}
 				else {
-					output << cells_[i][j]->GetText() << "\t";
+					output << cells_[row][col]->GetText() << "\t";
 				}
 			}
 			else {
 				output << "\t";
 			}
 		}
-		if (size.cols > static_cast<int>(cells_[i].size())) {
-			for (int col = 0; col < size.cols - static_cast<int>(cells_[i].size()) - 1; ++col) {
+		if (size.cols > static_cast<int>(cells_[row].size())) {
+			for (int col = 0; col < size.cols - static_cast<int>(cells_[row].size()) - 1; ++col) {
 				output << "\t";
 			}
 		}
@@ -183,6 +167,13 @@ void Sheet::Resize(Position pos) {
 	if (static_cast<int>(cells_[pos.row].size()) < size.cols) {
 		cells_[pos.row].resize(size.cols);
 	}
+}
+
+bool Sheet::IsValidPos(Position pos) const {
+	if (!pos.IsValid()) {
+		throw InvalidPositionException("Invalid Position in metod SetCell");
+	}
+	return true;
 }
 
 std::unique_ptr<SheetInterface> CreateSheet() {

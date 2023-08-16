@@ -143,35 +143,34 @@ public:
     }
 
     double Evaluate(const SheetInterface& sheet) const override {
+        double left = lhs_->Evaluate(sheet);
+        double right = rhs_->Evaluate(sheet);
+        double result;
         switch (GetPrecedence()) {
-        case 0: { 
-            if (!std::isfinite(lhs_->Evaluate(sheet) + rhs_->Evaluate(sheet))) {
-                throw FormulaError(FormulaError::Category::Div0);
-            }
-            return lhs_->Evaluate(sheet) + rhs_->Evaluate(sheet); 
+        case EP_ADD: {
+            result = left + right;
+            break;
         }
-        case 1: { 
-            if (!std::isfinite(lhs_->Evaluate(sheet) - rhs_->Evaluate(sheet))) {
-                throw FormulaError(FormulaError::Category::Div0);
-            }
-            return lhs_->Evaluate(sheet) - rhs_->Evaluate(sheet); 
+        case EP_SUB: {
+            result = left - right;
+            break;
         }
-        case 2: { 
-            if (!std::isfinite(lhs_->Evaluate(sheet) * rhs_->Evaluate(sheet))) {
-                throw FormulaError(FormulaError::Category::Div0);
-            }
-            return lhs_->Evaluate(sheet) * rhs_->Evaluate(sheet); 
+        case EP_MUL: {
+            result = left * right;
+            break;
         }
-        case 3: {
-            if (!std::isfinite(lhs_->Evaluate(sheet) / rhs_->Evaluate(sheet))) {
-                throw FormulaError(FormulaError::Category::Div0);
-            }
-            return lhs_->Evaluate(sheet) / rhs_->Evaluate(sheet);
+        case EP_DIV: {
+            result = left / right;
+            break;
         }
         default:
             assert(false);
             return static_cast<ExprPrecedence>(INT_MAX);
         }
+        if (!std::isfinite(result)) {
+            throw FormulaError(FormulaError::Category::Div0);
+        }
+        return result;
     }
 
 private:
@@ -211,8 +210,10 @@ public:
     double Evaluate(const SheetInterface& sheet) const override {
         switch (type_) {
         case UnaryPlus: { return operand_->Evaluate(sheet); }
+        case UnaryMinus: { return -operand_->Evaluate(sheet); }
         default:
-            return -operand_->Evaluate(sheet);
+            assert(false);
+            return static_cast<ExprPrecedence>(INT_MAX);
         }
     }
 
@@ -254,14 +255,7 @@ public:
             }
             try
             {
-                std::string str = std::get<std::string>(sheet.GetCell(*cell_)->GetValue());
-                for (auto ch : str) {
-                    if (ch >= '0' && ch <= '9') {
-                    }
-                    else {
-                        throw FormulaError(FormulaError::Category::Value);
-                    }
-                }
+                IsDigit(sheet);
                 return std::stod(std::get<std::string>(sheet.GetCell(*cell_)->GetValue()));
             }
             catch (const std::exception&)
@@ -279,6 +273,8 @@ public:
 
 private:
     const Position* cell_;
+
+    bool IsDigit(const SheetInterface& sheet) const;
 };
 
 class NumberExpr final : public Expr {
@@ -406,6 +402,18 @@ public:
         throw ParsingError("Error when lexing: " + msg);
     }
 };
+
+bool CellExpr::IsDigit(const SheetInterface& sheet) const{
+    std::string str = std::get<std::string>(sheet.GetCell(*cell_)->GetValue());
+    for (auto ch : str) {
+        if (ch >= '0' && ch <= '9') {
+        }
+        else {
+            throw FormulaError(FormulaError::Category::Value);
+        }
+    }
+    return true;
+}
 
 }  // namespace
 }  // namespace ASTImpl
